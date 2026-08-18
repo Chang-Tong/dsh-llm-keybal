@@ -1,6 +1,6 @@
 {
   "name": "dsh-llm-keybal",
-  "version": "0.1.0-rc.5",
+  "version": "0.1.0-rc.6",
   "packageManager": "pnpm@11.7.0",
   "description": "Multi-provider API-key load-balancing LLM adapter for DeepSeek Harness (dsh): each provider route (deepseek_pool, openai_pool, claude_pool, qwen_pool, …) owns per-model key pools with round-robin / random / least-used / health strategies, failure cooldown, and automatic key failover.",
   "type": "module",
