@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { assertServiceable, Config, type KeyBalStrategy, type Config as KeyBalConfig } from '../src/config.ts'
+import { assertServiceable, Config, resolveConfig, type KeyBalStrategy, type Config as KeyBalConfig } from '../src/config.ts'
 
 const strategy: KeyBalStrategy = 'round-robin'
 
@@ -44,27 +44,56 @@ describe('Config schema', () => {
 
 describe('assertServiceable', () => {
   it('passes a serviceable config', () => {
-    expect(() => assertServiceable(Config(validConfig))).not.toThrow()
+    expect(() => {
+      assertServiceable(Config(validConfig))
+    }).not.toThrow()
   })
 
   it('rejects an empty key pool', () => {
-    const bad: KeyBalConfig = {
-      ...validConfig,
+    const bad = {
+      strategy,
+      maxRetries: 2,
+      cooldownMs: 30000,
       providers: {
         deepseek_pool: {
           baseURL: 'https://api.deepseek.com',
           models: { 'deepseek-v4-flash': { keys: [] } },
         },
       },
-    }
-    expect(() => assertServiceable(Config(bad))).toThrow(/no keys/)
+    } as unknown as KeyBalConfig
+    expect(() => {
+      assertServiceable(Config(bad))
+    }).toThrow(/no keys/)
   })
 
   it('rejects an empty baseURL', () => {
-    const bad: KeyBalConfig = {
-      ...validConfig,
+    const bad = {
+      strategy,
+      maxRetries: 2,
+      cooldownMs: 30000,
       providers: { deepseek_pool: { baseURL: '', models: { m: { keys: ['k'] } } } },
-    }
-    expect(() => assertServiceable(Config(bad))).toThrow(/baseURL/)
+    } as unknown as KeyBalConfig
+    expect(() => {
+      assertServiceable(Config(bad))
+    }).toThrow(/baseURL/)
+  })
+
+  it('rejects a provider with no models', () => {
+    const bad = {
+      strategy,
+      maxRetries: 2,
+      cooldownMs: 30000,
+      providers: { deepseek_pool: { baseURL: 'https://api.deepseek.com', models: {} } },
+    } as unknown as KeyBalConfig
+    expect(() => {
+      assertServiceable(Config(bad))
+    }).toThrow(/has no models/)
+  })
+})
+
+describe('resolveConfig', () => {
+  it('fills every global default when a snapshot omits them', () => {
+    const resolved = resolveConfig({ providers: {} })
+    expect(resolved).toMatchObject({ strategy: 'round-robin', maxRetries: 2, cooldownMs: 30000 })
   })
 })

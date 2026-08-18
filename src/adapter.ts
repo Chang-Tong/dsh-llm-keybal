@@ -9,15 +9,16 @@
  * @module dsh-llm-keybal/adapter
  */
 
-import { attributionHeaders, LlmAdapter, LlmError } from '@deepseek-ai/dsh-llm'
+import { attributionHeaders, LlmAdapter, LlmError, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type {
   GenerateOptions,
   LlmModelInfo,
+  LlmModelReasoningInfo,
   LlmProviderInfo,
   LlmResolvedModelInfo,
   StreamChunk,
 } from '@deepseek-ai/dsh-llm'
-import type { ResolvedKeyBalConfig } from './config.ts'
+import type { KeyBalReasoningEffort, ResolvedKeyBalConfig } from './config.ts'
 import { KeyBalancer } from './balancer.ts'
 import { assertSupportedEffort, serializeRequest } from './serialize.ts'
 import { parseSse } from './sse.ts'
@@ -77,7 +78,7 @@ export class KeyBalAdapter extends LlmAdapter {
   override listModels(provider: string): Promise<readonly LlmModelInfo[]> {
     const route = this.routes().get(provider)
     if (route === undefined) return Promise.resolve([])
-    return Promise.resolve(route.pools.models().map((pool) => ({
+    return Promise.resolve(route.pools.models().map(pool => ({
       provider,
       id: pool.model,
       name: pool.model,
@@ -97,7 +98,11 @@ export class KeyBalAdapter extends LlmAdapter {
       id: model,
       name: model,
       inputModalities: ['text'] as const,
-      ...pool === undefined ? {} : { context: { contextWindow: pool.contextWindow }, defaultMaxTokens: pool.maxTokens },
+      ...pool === undefined ? {} : {
+        context: { contextWindow: pool.contextWindow },
+        defaultMaxTokens: pool.maxTokens,
+        ...pool.reasoningEffort === undefined ? {} : { reasoning: reasoningInfo(pool.reasoningEffort) },
+      },
     })
   }
 
@@ -175,14 +180,16 @@ export class KeyBalAdapter extends LlmAdapter {
       )
       if (!response.ok) {
         let message = `keybal upstream error (HTTP ${response.status})`
+        let error: WireErrorBody['error'] | undefined
         try {
           const parsed = await response.json() as WireErrorBody
+          error = parsed.error
           if (parsed.error?.message) message = parsed.error.message
         } catch {
           // The HTTP status still identifies the failure.
         }
         const delay = providerRetryAfterMs(response.headers.get('retry-after'))
-        throw new LlmError(message, httpErrorCode(response.status), {
+        throw new LlmError(message, httpErrorCode(response.status, error), {
           status: response.status,
           ...delay === undefined ? {} : { providerRetryAfterMs: delay },
         })
@@ -246,4 +253,19 @@ export function buildRoutes(config: ResolvedKeyBalConfig): Map<string, KeyBalRou
     })
   }
   return routes
+}
+
+/**
+ * The reasoning metadata advertised for one model: the same Off/High/Max
+ * levels as the DeepSeek adapter, pinned to the configured default.
+ */
+function reasoningInfo(effort: KeyBalReasoningEffort): LlmModelReasoningInfo {
+  return {
+    efforts: [
+      { id: ReasoningEffortId('off'), name: 'Off' },
+      { id: ReasoningEffortId('high'), name: 'High' },
+      { id: ReasoningEffortId('max'), name: 'Max' },
+    ] as const,
+    defaultEffort: ReasoningEffortId(effort),
+  }
 }

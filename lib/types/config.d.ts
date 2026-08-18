@@ -36,6 +36,8 @@ export declare const DEFAULT_CONTEXT_WINDOW = 131072;
 export declare const DEFAULT_MAX_TOKENS = 8192;
 /** Load-balancing strategy for one key pool. */
 export type KeyBalStrategy = 'round-robin' | 'random' | 'least-used' | 'health';
+/** Reasoning effort levels a keybal model advertises (mirrors the DeepSeek adapter). */
+export type KeyBalReasoningEffort = 'off' | 'high' | 'max';
 /** Plugin-wide defaults; a model entry may override each field. */
 export interface KeyBalDefaults {
     strategy: KeyBalStrategy;
@@ -55,6 +57,8 @@ export interface KeyBalModelConfig {
     contextWindow?: number;
     /** Per-request output cap materialized when the caller omits one. */
     maxTokens?: number;
+    /** Default reasoning effort materialized into requests that omit one. */
+    reasoningEffort?: KeyBalReasoningEffort;
     /** Pool-local strategy override. */
     strategy?: KeyBalStrategy;
     /** Pool-local retry override. */
@@ -93,7 +97,8 @@ export declare function resolveConfig(config: Config): ResolvedKeyBalConfig;
 /**
  * Reject a configuration the adapter could not serve, naming the offending
  * route or model. Keys are the whole credential plane here (unlike
- * reference-based adapters), so an empty pool is the one unserviceable shape.
+ * reference-based adapters), so an empty pool is the one unserviceable shape;
+ * a route with no models serves nothing either.
  */
 export declare function assertServiceable(config: Config): void;
 //# sourceMappingURL=config.d.ts.map

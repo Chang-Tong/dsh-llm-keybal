@@ -7,7 +7,7 @@
  * @module dsh-llm-keybal/balancer
  */
 
-import type { KeyBalProviderConfig } from './config.ts'
+import type { KeyBalProviderConfig, KeyBalReasoningEffort } from './config.ts'
 import { DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_TOKENS, type ResolvedKeyBalConfig } from './config.ts'
 import { acquire, createPool, report, type KeyEntry, type KeyPool } from './pool.ts'
 
@@ -22,6 +22,8 @@ export interface ModelPoolView {
   model: string
   contextWindow: number
   maxTokens: number
+  /** Adapter-configured default reasoning effort, when the model pins one. */
+  reasoningEffort?: KeyBalReasoningEffort
   strategy: string
   status(): Record<string, unknown>
 }
@@ -73,12 +75,13 @@ export class KeyBalancer {
       model,
       contextWindow: config?.contextWindow ?? DEFAULT_CONTEXT_WINDOW,
       maxTokens: config?.maxTokens ?? DEFAULT_MAX_TOKENS,
+      ...config?.reasoningEffort === undefined ? {} : { reasoningEffort: config.reasoningEffort },
       strategy: pool.strategy,
       status: () => ({
         strategy: pool.strategy,
         total: pool.entries.length,
-        healthy: pool.entries.filter((entry) => entry.disabledUntil <= Date.now()).length,
-        cooling: pool.entries.filter((entry) => entry.disabledUntil > Date.now()).length,
+        healthy: pool.entries.filter(entry => entry.disabledUntil <= Date.now()).length,
+        cooling: pool.entries.filter(entry => entry.disabledUntil > Date.now()).length,
         uses: pool.entries.reduce((sum, entry) => sum + entry.uses, 0),
         failures: pool.entries.reduce((sum, entry) => sum + entry.failures, 0),
         inflight: pool.entries.reduce((sum, entry) => sum + entry.inflight, 0),
@@ -88,7 +91,9 @@ export class KeyBalancer {
 
   /** Every configured model, in configuration order. */
   models(): ModelPoolView[] {
-    return Object.keys(this.profile.models).map((model) => this.model(model)!).filter(Boolean)
+    return Object.keys(this.profile.models)
+      .map(model => this.model(model))
+      .filter((view): view is ModelPoolView => view !== undefined)
   }
 
   maxRetries(model: string): number {

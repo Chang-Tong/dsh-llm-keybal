@@ -64,8 +64,34 @@ describe('translate', () => {
     expect(finish).toMatchObject({ type: 'finish', reason: { kind: 'error' } })
   })
 
+  it('defaults missing wire fields and keeps open blocks across deltas', async () => {
+    const chunks = await collect([
+      JSON.stringify({}),
+      JSON.stringify({ choices: [{ delta: { reasoning_content: 'a' } }] }),
+      JSON.stringify({ choices: [{ delta: { reasoning_content: 'b' } }] }),
+      JSON.stringify({ choices: [{ delta: { tool_calls: [{ function: { arguments: '{}' } }] } }] }),
+      JSON.stringify({ choices: [{ delta: { tool_calls: [{}] } }] }),
+      DONE,
+    ])
+    expect(chunks).toContainEqual({ type: 'reasoning-delta', index: 0, text: 'a' })
+    expect(chunks).toContainEqual({ type: 'reasoning-delta', index: 0, text: 'b' })
+    const blockEnd = chunks.find((chunk) => {
+      const block = (chunk as { block?: { type?: string } }).block
+      return block?.type === 'tool-call'
+    })
+    expect(blockEnd).toMatchObject({
+      type: 'block-end',
+      block: { type: 'tool-call', id: '', name: '', arguments: '{}' },
+    })
+    expect(chunks).toContainEqual({ type: 'finish', reason: { kind: 'stop' } })
+  })
+
   it('throws on malformed JSON payloads', async () => {
     await expect(collect(['not-json', DONE])).rejects.toMatchObject({ code: 'MALFORMED_RESPONSE' })
+  })
+
+  it('throws STREAM_CLOSED when the payload stream ends without DONE', async () => {
+    await expect(collect(['{"choices":[]}'])).rejects.toMatchObject({ code: 'STREAM_CLOSED' })
   })
 })
 
@@ -90,5 +116,13 @@ describe('mapUsage', () => {
   it('keeps plain counts disjoint when no cache is reported', () => {
     expect(mapUsage({ prompt_tokens: 100, completion_tokens: 20 }))
       .toEqual({ inputTokens: 100, outputTokens: 20 })
+  })
+
+  it('reports reasoning tokens when the wire provides them', () => {
+    expect(mapUsage({
+      prompt_tokens: 100,
+      completion_tokens: 20,
+      completion_tokens_details: { reasoning_tokens: 8 },
+    })).toEqual({ inputTokens: 100, outputTokens: 20, reasoningTokens: 8 })
   })
 })

@@ -100,6 +100,16 @@ This package adds no prompt prose. Requests always stream with usage
 reporting; reasoning content is replayed to the wire only on tool-call turns
 (the DeepSeek thinking-mode passback rule).
 
+### Reasoning effort
+
+Each model entry may pin a default reasoning effort (`off`, `high`, `max`)
+with `reasoningEffort:`; the model selector then offers the same Off / High /
+Max choices as the DeepSeek provider, with the pinned level preselected. The
+effort is materialized per request: `off` sends `thinking: {type: disabled}`,
+`high` / `max` send `thinking: {type: enabled}` plus
+`reasoning_effort: high|max`. Without a pin the request carries no effort
+field and the provider's own default applies.
+
 ### Token effect
 
 Provider tokenization governs exact input. Serialization adds no

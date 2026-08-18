@@ -97,11 +97,25 @@ export function serializeRequest(options: GenerateOptions): WireRequest {
     },
   }))
 
+  // The same thinking-wire semantics as the DeepSeek adapter: an explicit
+  // `off` disables thinking; `high`/`max` enable it with a wire effort. No
+  // effort at all puts nothing on the wire, so the upstream provider default
+  // applies. (Keybal has no `thinking: disabled` deployment pin; per-request
+  // efforts always resolve.)
+  const thinking = options.reasoningEffort === undefined
+    ? undefined
+    : options.reasoningEffort === 'off'
+      ? { type: 'disabled' as const }
+      : { type: 'enabled' as const }
+  const reasoningEffort = options.reasoningEffort === 'off' ? undefined : options.reasoningEffort
+
   return {
     model: options.model,
     messages,
     stream: true,
     stream_options: { include_usage: true },
+    ...thinking === undefined ? {} : { thinking },
+    ...reasoningEffort === undefined ? {} : { reasoning_effort: reasoningEffort as 'high' | 'max' },
     ...tools !== undefined && tools.length > 0 ? { tools } : {},
     ...options.temperature !== undefined ? { temperature: options.temperature } : {},
     ...options.maxTokens === undefined ? {} : { max_tokens: options.maxTokens },

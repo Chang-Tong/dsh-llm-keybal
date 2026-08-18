@@ -36,6 +36,10 @@ export interface WireRequest {
   messages: WireMessage[]
   stream: boolean
   stream_options?: { include_usage: boolean }
+  /** DeepSeek-thinking wire mode (mirrors the DeepSeek adapter). */
+  thinking?: { type: 'enabled' | 'disabled' }
+  /** DeepSeek-thinking wire effort, when thinking is enabled. */
+  reasoning_effort?: 'high' | 'max'
   tools?: WireTool[]
   temperature?: number
   max_tokens?: number

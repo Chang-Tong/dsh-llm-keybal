@@ -3,8 +3,8 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { CallId, MessageId, type Message } from '@deepseek-ai/dsh-llm'
-import { serializeMessages, serializeRequest } from '../src/serialize.ts'
+import { CallId, MessageId, ReasoningEffortId, type Message } from '@deepseek-ai/dsh-llm'
+import { assertSupportedEffort, serializeMessages, serializeRequest } from '../src/serialize.ts'
 
 let seq = 0
 function mid(): MessageId {
@@ -57,6 +57,38 @@ describe('serializeMessages', () => {
       { role: 'tool', tool_call_id: 'call-1', content: 'sunny' },
     ])
   })
+
+  it('omits the user message when a tool-result turn has no text', () => {
+    const wire = serializeMessages([
+      msg('user', [
+        { type: 'tool-result', toolCallId: CallId('call-2'), content: [{ type: 'text', text: 'done' }], isError: false },
+      ], { kind: 'tool', callId: CallId('call-2') }),
+    ])
+    expect(wire).toEqual([
+      { role: 'tool', tool_call_id: 'call-2', content: 'done' },
+    ])
+  })
+
+  it('substitutes a placeholder for an empty tool-result body', () => {
+    const wire = serializeMessages([
+      msg('user', [
+        { type: 'tool-result', toolCallId: CallId('call-3'), content: [], isError: false },
+      ], { kind: 'tool', callId: CallId('call-3') }),
+    ])
+    expect(wire).toEqual([
+      { role: 'tool', tool_call_id: 'call-3', content: '(no output)' },
+    ])
+  })
+
+  it('drops reasoning from a reasoning-only assistant turn', () => {
+    const wire = serializeMessages([
+      msg('assistant', [{ type: 'reasoning', text: 'thinking...' }], { kind: 'model', provider: 'p', model: 'm' }),
+    ])
+    expect(wire[0]).toEqual({
+      role: 'assistant',
+      content: '',
+    })
+  })
 })
 
 describe('serializeRequest', () => {
@@ -95,5 +127,50 @@ describe('serializeRequest', () => {
     expect(request.temperature).toBeUndefined()
     expect(request.max_tokens).toBeUndefined()
     expect(request.tools).toBeUndefined()
+    expect(request.thinking).toBeUndefined()
+    expect(request.reasoning_effort).toBeUndefined()
+  })
+
+  it('disables thinking for an explicit off effort', () => {
+    const request = serializeRequest({
+      provider: 'p',
+      model: 'm',
+      reasoningEffort: ReasoningEffortId('off'),
+      messages: [msg('user', [{ type: 'text', text: 'hi' }])],
+    })
+    expect(request.thinking).toEqual({ type: 'disabled' })
+    expect(request.reasoning_effort).toBeUndefined()
+  })
+
+  it('enables thinking with a wire effort for high and max', () => {
+    const high = serializeRequest({
+      provider: 'p',
+      model: 'm',
+      reasoningEffort: ReasoningEffortId('high'),
+      messages: [msg('user', [{ type: 'text', text: 'hi' }])],
+    })
+    expect(high.thinking).toEqual({ type: 'enabled' })
+    expect(high.reasoning_effort).toBe('high')
+    const max = serializeRequest({
+      provider: 'p',
+      model: 'm',
+      reasoningEffort: ReasoningEffortId('max'),
+      messages: [msg('user', [{ type: 'text', text: 'hi' }])],
+    })
+    expect(max.thinking).toEqual({ type: 'enabled' })
+    expect(max.reasoning_effort).toBe('max')
+  })
+})
+
+describe('assertSupportedEffort', () => {
+  it('accepts the supported efforts and undefined', () => {
+    expect(() => { assertSupportedEffort(undefined) }).not.toThrow()
+    expect(() => { assertSupportedEffort('off') }).not.toThrow()
+    expect(() => { assertSupportedEffort('high') }).not.toThrow()
+    expect(() => { assertSupportedEffort('max') }).not.toThrow()
+  })
+
+  it('rejects an unsupported effort', () => {
+    expect(() => { assertSupportedEffort('ultra') }).toThrow(/reasoning effort/)
   })
 })

@@ -10,6 +10,11 @@
  * several credentials, not one reference), so this adapter takes them
  * directly from the plugin config rather than through the credential seam.
  *
+ * Configuration is editable: the `llm-keybal` user-settings section holds the
+ * live provider dict, and profile facts resolve per request, so a changed
+ * key, endpoint, model, or knob reaches the next request without a restart.
+ * A changed *route set* re-registers the same adapter instance in place.
+ *
  * ```yaml
  * - id: llm-keybal
  *   name: 'dsh-llm-keybal'
@@ -51,10 +56,10 @@ export type * from './types.ts';
 export declare const name = "llm-keybal";
 export declare const inject: string[];
 /**
- * Register the keybal adapter for every configured provider route. Routes are
- * a static composition fact (keys are literal config), so there is no
- * settings section: re-registration is unnecessary because route and pool
- * facts never change after load.
+ * Register the keybal adapter for every configured provider route. Route
+ * facts resolve per request from the live configuration (plugin default +
+ * `llm-keybal` settings section), so key, pool, and knob changes reach the
+ * next request without a restart; only a changed route set re-registers.
  */
 export declare function apply(ctx: Context, config: Config): void;
 //# sourceMappingURL=index.d.ts.map

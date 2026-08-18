@@ -50,7 +50,7 @@ export function createPool(keys: readonly string[], options: KeyPoolOptions, mod
     cooldownMs: options.cooldownMs,
     maxRetries: options.maxRetries,
     rr: 0,
-    entries: keys.map((key) => ({
+    entries: keys.map(key => ({
       key,
       uses: 0,
       failures: 0,
@@ -62,11 +62,11 @@ export function createPool(keys: readonly string[], options: KeyPoolOptions, mod
 }
 
 function healthy(now: number, entries: readonly KeyEntry[]): KeyEntry[] {
-  return entries.filter((entry) => entry.disabledUntil <= now)
+  return entries.filter(entry => entry.disabledUntil <= now)
 }
 
 function pickRandom(entries: readonly KeyEntry[]): KeyEntry {
-  return entries[Math.floor(Math.random() * entries.length)]!
+  return entries[Math.floor(Math.random() * entries.length)] as KeyEntry
 }
 
 /**
@@ -80,7 +80,7 @@ export function acquire(pool: KeyPool): KeyEntry | null {
   const ready = healthy(now, pool.entries)
   if (ready.length === 0) {
     if (pool.entries.length === 0) return null
-    const soonest = [...pool.entries].sort((a, b) => a.disabledUntil - b.disabledUntil)[0]!
+    const soonest = [...pool.entries].sort((a, b) => a.disabledUntil - b.disabledUntil)[0] as KeyEntry
     soonest.inflight++
     return soonest
   }
@@ -92,7 +92,7 @@ export function acquire(pool: KeyPool): KeyEntry | null {
   } else if (pool.strategy === 'health') {
     entry = ready.reduce((a, b) => (a.failures * 10 + a.uses) <= (b.failures * 10 + b.uses) ? a : b)
   } else {
-    entry = ready[pool.rr % ready.length]!
+    entry = ready[pool.rr % ready.length] as KeyEntry
     pool.rr = (pool.rr + 1) % ready.length
   }
   entry.inflight++
@@ -125,7 +125,7 @@ export function poolStatus(pool: KeyPool, now = Date.now()): Record<string, unkn
     strategy: pool.strategy,
     total: pool.entries.length,
     healthy: healthy(now, pool.entries).length,
-    cooling: pool.entries.filter((entry) => entry.disabledUntil > now).length,
+    cooling: pool.entries.filter(entry => entry.disabledUntil > now).length,
     uses: pool.entries.reduce((sum, entry) => sum + entry.uses, 0),
     failures: pool.entries.reduce((sum, entry) => sum + entry.failures, 0),
     inflight: pool.entries.reduce((sum, entry) => sum + entry.inflight, 0),

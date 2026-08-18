@@ -41,6 +41,9 @@ export const DEFAULT_MAX_TOKENS = 8_192
 /** Load-balancing strategy for one key pool. */
 export type KeyBalStrategy = 'round-robin' | 'random' | 'least-used' | 'health'
 
+/** Reasoning effort levels a keybal model advertises (mirrors the DeepSeek adapter). */
+export type KeyBalReasoningEffort = 'off' | 'high' | 'max'
+
 /** Plugin-wide defaults; a model entry may override each field. */
 export interface KeyBalDefaults {
   strategy: KeyBalStrategy
@@ -60,6 +63,8 @@ export interface KeyBalModelConfig {
   contextWindow?: number
   /** Per-request output cap materialized when the caller omits one. */
   maxTokens?: number
+  /** Default reasoning effort materialized into requests that omit one. */
+  reasoningEffort?: KeyBalReasoningEffort
   /** Pool-local strategy override. */
   strategy?: KeyBalStrategy
   /** Pool-local retry override. */
@@ -80,12 +85,15 @@ export interface KeyBalProviderConfig {
 
 const KeyBalStrategySchema: z<KeyBalStrategy> = z.union(['round-robin', 'random', 'least-used', 'health'])
 
+const reasoningEffortSchema: z<KeyBalReasoningEffort> = z.union(['off', 'high', 'max'])
+
 const modelConfig: z<KeyBalModelConfig> = z.object({
   keys: z.array(z.string()).default([]),
   name: z.string(),
   description: z.string(),
   contextWindow: z.number().step(1).min(1),
   maxTokens: z.number().step(1).min(1),
+  reasoningEffort: reasoningEffortSchema,
   strategy: KeyBalStrategySchema,
   maxRetries: z.number().step(1).min(0),
   cooldownMs: z.natural(),
@@ -135,12 +143,16 @@ export function resolveConfig(config: Config): ResolvedKeyBalConfig {
 /**
  * Reject a configuration the adapter could not serve, naming the offending
  * route or model. Keys are the whole credential plane here (unlike
- * reference-based adapters), so an empty pool is the one unserviceable shape.
+ * reference-based adapters), so an empty pool is the one unserviceable shape;
+ * a route with no models serves nothing either.
  */
 export function assertServiceable(config: Config): void {
   for (const [provider, profile] of Object.entries(config.providers)) {
     if (profile.baseURL.length === 0) {
       throw new Error(`keybal: provider "${provider}" needs a non-empty baseURL`)
+    }
+    if (Object.keys(profile.models).length === 0) {
+      throw new Error(`keybal: provider "${provider}" has no models configured`)
     }
     for (const [model, entry] of Object.entries(profile.models)) {
       if (entry.keys.length === 0) {

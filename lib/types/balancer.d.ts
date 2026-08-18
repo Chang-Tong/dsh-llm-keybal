@@ -6,7 +6,7 @@
  *
  * @module dsh-llm-keybal/balancer
  */
-import type { KeyBalProviderConfig } from './config.ts';
+import type { KeyBalProviderConfig, KeyBalReasoningEffort } from './config.ts';
 import { type ResolvedKeyBalConfig } from './config.ts';
 import { type KeyEntry } from './pool.ts';
 /** A picked credential plus the pool entry index to report back against. */
@@ -19,6 +19,8 @@ export interface ModelPoolView {
     model: string;
     contextWindow: number;
     maxTokens: number;
+    /** Adapter-configured default reasoning effort, when the model pins one. */
+    reasoningEffort?: KeyBalReasoningEffort;
     strategy: string;
     status(): Record<string, unknown>;
 }

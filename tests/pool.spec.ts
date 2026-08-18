@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import { acquire, createPool, report, type KeyPool } from '../src/pool.ts'
+import { acquire, createPool, poolStatus, report, type KeyPool } from '../src/pool.ts'
 
 function pool(keys: string[], strategy: 'round-robin' | 'random' | 'least-used' | 'health'): KeyPool {
   return createPool(keys, { strategy, cooldownMs: 1000, maxRetries: 2 }, 'mock-model')
@@ -117,5 +117,25 @@ describe('cooldown timer', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('poolStatus', () => {
+  it('summarizes the pool health', () => {
+    const p = pool(['a', 'b'], 'round-robin')
+    const first = acquire(p)!
+    report(p, first, true, 200)
+    report(p, first, false, 429)
+    report(p, first, false, 429)
+    const status = poolStatus(p, Date.now() + 1)
+    expect(status).toMatchObject({
+      model: 'mock-model',
+      strategy: 'round-robin',
+      total: 2,
+      healthy: 1,
+      cooling: 1,
+      uses: 3,
+      failures: 2,
+    })
   })
 })
