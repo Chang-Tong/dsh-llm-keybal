@@ -43,6 +43,8 @@ import type { Context } from '@deepseek-ai/cordis';
 import { Config } from './config.ts';
 export { KeyBalAdapter } from './adapter.ts';
 export type { KeyBalRoute } from './adapter.ts';
+export { installCommands, renderProviders, renderStatus } from './commands.ts';
+export type { CommandConfigSource, CommandServices } from './commands.ts';
 export { Config, resolveConfig } from './config.ts';
 export type { Config as KeyBalConfig, KeyBalDefaults, KeyBalModelConfig, KeyBalProviderConfig, KeyBalStrategy, ResolvedKeyBalConfig, } from './config.ts';
 export { createPool, acquire, report, poolStatus } from './pool.ts';

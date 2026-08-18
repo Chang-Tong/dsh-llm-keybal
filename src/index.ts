@@ -46,9 +46,12 @@ import { deepEqualJson, installSettingsSection, settingsNamespace } from '@deeps
 import { KeyBalAdapter, buildRoutes } from './adapter.ts'
 import type { KeyBalRoute } from './adapter.ts'
 import { assertServiceable, Config, resolveConfig } from './config.ts'
+import { installCommands } from './commands.ts'
 
 export { KeyBalAdapter } from './adapter.ts'
 export type { KeyBalRoute } from './adapter.ts'
+export { installCommands, renderProviders, renderStatus } from './commands.ts'
+export type { CommandConfigSource, CommandServices } from './commands.ts'
 export { Config, resolveConfig } from './config.ts'
 export type {
   Config as KeyBalConfig,
@@ -202,4 +205,10 @@ export function apply(ctx: Context, config: Config): void {
       }
     },
   })
+
+  // Native commands ride the optional `commands` service: absent (bare mount,
+  // test composition), nothing registers; present, the four pool-admin
+  // commands appear. The config reader is the same live source the adapter
+  // resolves per request, so a command edit lands on the next request.
+  installCommands(ctx, routes, current)
 }

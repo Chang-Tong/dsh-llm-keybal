@@ -88,7 +88,7 @@ const KeyBalStrategySchema: z<KeyBalStrategy> = z.union(['round-robin', 'random'
 const reasoningEffortSchema: z<KeyBalReasoningEffort> = z.union(['off', 'high', 'max'])
 
 const modelConfig: z<KeyBalModelConfig> = z.object({
-  keys: z.array(z.string()).default([]),
+  keys: z.array(z.string()).role('secret').default([]),
   name: z.string(),
   description: z.string(),
   contextWindow: z.number().step(1).min(1),

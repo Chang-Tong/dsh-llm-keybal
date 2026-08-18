@@ -120,6 +120,35 @@ model-visible text.
 No provider-side cache is primed or invalidated by this package. Prompt
 cache hits reported by the provider are passed through as `cacheReadTokens`.
 
+## Native commands
+
+When the dsh `commands` service is present (every interactive profile), the
+plugin registers four pool-administration commands. They read live balancer
+state and edit the `llm-keybal` settings section through the settings
+service, so every change lands on the same validated path a settings
+document edit uses (a refused write leaves the previous configuration
+serving). A bare mount without `commands` or `settings` simply skips them.
+
+| Command | Effect |
+| --- | --- |
+| `/keybal-status` | Live per-pool line: provider/model, strategy, healthy/total keys, cooling keys, uses, failures. |
+| `/keybal-providers` | Configured providers, display names, and per-provider model lists. |
+| `/keybal-add-key <provider> <model> <key>` | Append one API key to a pool (creates the pool when the model is unconfigured). Persists into the settings document. |
+| `/keybal-set-strategy <provider> <round-robin\|random\|least-used\|health>` | Switch every model of a provider to a strategy. Persists into the settings document. |
+
+## Settings section
+
+The browser settings panel gains a **KeyBal 池** section (id `llm-keybal`)
+when the package's client bundle is loaded. It shows every configured pool:
+provider route, model name, current strategy, and the number of keys (never
+the keys themselves — API keys are `role('secret')` and never cross the wire;
+the descriptor's `secrets` side table only reports how many a pool holds).
+The strategy dropdown writes back through the settings wire with revision
+checking. Appending keys stays on the host side (`/keybal-add-key` or the
+config file) because the wire is write-only for secrets: a browser form
+cannot read a pool's existing keys, so it cannot rewrite the array without
+destroying them.
+
 ## Layout
 
 | File | Purpose |
@@ -131,7 +160,10 @@ cache hits reported by the provider are passed through as `cacheReadTokens`.
 | `src/sse.ts` | SSE byte stream → data payloads. |
 | `src/translate.ts` | Wire chunks → harness `StreamChunk`s. |
 | `src/adapter.ts` | `KeyBalAdapter` (LlmAdapter) with load-balanced streaming. |
-| `src/index.ts` | Plugin entry: registers routes on `ctx.llm`. |
+| `src/commands.ts` | Native pool-administration commands (status / providers / add-key / set-strategy). |
+| `src/client/index.ts` | Client bundle entry: registers the KeyBal settings section. |
+| `src/client/KeyBalSection.tsx` | Settings page: pool overview + strategy editing. |
+| `src/index.ts` | Plugin entry: registers routes on `ctx.llm`, commands, and the settings section. |
 
 ## Publishing
 
@@ -152,8 +184,10 @@ them, so the published tarball carries only `eventsource-parser`.
 ## Known Limitations and Deferred Work
 
 - Keys are literal configuration values (a pool is several credentials, not
-  one reference), so there is no settings-section or credential-seam wiring:
-  changing keys requires a composition reload.
+  one reference). The browser settings section is deliberately read-mostly
+  for secrets: keys are `role('secret')` on the wire, so a client form can
+  only add keys through the host command (`/keybal-add-key`); editing or
+  removing keys means a settings-document or profile config edit.
 - The wire protocol is OpenAI-compatible chat-completions only; native
   Anthropic `/v1/messages` is not yet supported (Anthropic-compatible
   gateways that expose `/chat/completions` work).
