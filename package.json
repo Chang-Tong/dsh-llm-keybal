@@ -1,0 +1,75 @@
+{
+  "name": "dsh-llm-keybal",
+  "version": "0.1.0-rc.5",
+  "packageManager": "pnpm@11.7.0",
+  "description": "Multi-provider API-key load-balancing LLM adapter for DeepSeek Harness (dsh): each provider route (deepseek_pool, openai_pool, claude_pool, qwen_pool, …) owns per-model key pools with round-robin / random / least-used / health strategies, failure cooldown, and automatic key failover.",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
+    "./types": {
+      "types": "./lib/types/types.d.ts",
+      "default": "./lib/types/types.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/invariant.js",
+    "lib/types/**/*.js",
+    "lib/types/**/*.d.ts",
+    "src/",
+    "README.md",
+    "LICENSE",
+    "cordis.patch.yml"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Chang-Tong/dsh-llm-keybal.git"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=0.1.0",
+    "@deepseek-ai/dsh-invariants": ">=0.1.0-rc.0",
+    "@deepseek-ai/dsh-llm": ">=0.1.0-rc.0",
+    "@deepseek-ai/schemastery": ">=3.0.0"
+  },
+  "dependencies": {
+    "eventsource-parser": "^3.1.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-invariants": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.0.1-rc.1",
+    "@deepseek-ai/schemastery": "^3.18.1",
+    "@types/node": "^26.2.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.10"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm run build && pnpm test"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "llm",
+    "load-balancing",
+    "api-key",
+    "round-robin",
+    "multi-key",
+    "plugin"
+  ]
+}

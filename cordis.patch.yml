@@ -1,0 +1,30 @@
+# dsh-llm-keybal — the bundle layer applied when a profile lists this package.
+#
+# Inserts the plugin row WITHOUT any API keys: keys are private user config
+# and must never live in a public repository. After installing this package,
+# add the keys in your profile's own cordis.patch.yml by overriding the row:
+#
+#   - id: llm-keybal
+#     config:
+#       strategy: round-robin
+#       maxRetries: 2
+#       cooldownMs: 30000
+#       providers:
+#         deepseek_pool:
+#           displayName: DeepSeek Pool
+#           baseURL: https://api.deepseek.com
+#           models:
+#             deepseek-v4-flash:
+#               name: deepseek-v4-flash
+#               description: DeepSeek V4 Flash (key-balanced)
+#               contextWindow: 131072
+#               maxTokens: 8192
+#               keys:
+#                 - sk-...
+#                 - sk-...
+#
+# Without keys the plugin loads but registers no provider route; the model
+# selector shows nothing until at least one provider has a non-empty key pool.
+- insert:
+    - id: llm-keybal
+      name: dsh-llm-keybal
