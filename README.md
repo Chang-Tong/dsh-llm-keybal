@@ -103,8 +103,9 @@ reporting; reasoning content is replayed to the wire only on tool-call turns
 ### Reasoning effort
 
 Each model entry may pin a default reasoning effort (`off`, `high`, `max`)
-with `reasoningEffort:`; the model selector then offers the same Off / High /
-Max choices as the DeepSeek provider, with the pinned level preselected. The
+with `reasoningEffort:`; the model selector always offers the same Off / High /
+Max choices as the DeepSeek provider, with the pinned level preselected (an
+unpinned model defaults to `high`). The
 effort is materialized per request: `off` sends `thinking: {type: disabled}`,
 `high` / `max` send `thinking: {type: enabled}` plus
 `reasoning_effort: high|max`. Without a pin the request carries no effort

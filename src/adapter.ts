@@ -101,7 +101,10 @@ export class KeyBalAdapter extends LlmAdapter {
       ...pool === undefined ? {} : {
         context: { contextWindow: pool.contextWindow },
         defaultMaxTokens: pool.maxTokens,
-        ...pool.reasoningEffort === undefined ? {} : { reasoning: reasoningInfo(pool.reasoningEffort) },
+        // Reasoning levels are always advertised (like the DeepSeek adapter):
+        // the selector must offer Off/High/Max even when the model entry does
+        // not pin a default, and an unpinned model defaults to `high`.
+        reasoning: reasoningInfo(pool.reasoningEffort ?? DEFAULT_REASONING_EFFORT),
       },
     })
   }
@@ -257,7 +260,8 @@ export function buildRoutes(config: ResolvedKeyBalConfig): Map<string, KeyBalRou
 
 /**
  * The reasoning metadata advertised for one model: the same Off/High/Max
- * levels as the DeepSeek adapter, pinned to the configured default.
+ * levels as the DeepSeek adapter, pinned to the configured default (`high`
+ * when the model entry does not pin one).
  */
 function reasoningInfo(effort: KeyBalReasoningEffort): LlmModelReasoningInfo {
   return {
@@ -269,3 +273,6 @@ function reasoningInfo(effort: KeyBalReasoningEffort): LlmModelReasoningInfo {
     defaultEffort: ReasoningEffortId(effort),
   }
 }
+
+/** The reasoning effort an unpinned model entry defaults to (matches DeepSeek). */
+const DEFAULT_REASONING_EFFORT: KeyBalReasoningEffort = 'high'

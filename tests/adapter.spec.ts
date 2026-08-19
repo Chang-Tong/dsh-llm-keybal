@@ -154,6 +154,19 @@ describe('KeyBalAdapter', () => {
     expect(resolved).toMatchObject({ provider: 'mock_pool', id: 'mock-model', context: { contextWindow: 131072 } })
   })
 
+  it('advertises reasoning with a high default when the model pins no effort', async () => {
+    const adapter = new KeyBalAdapter(once(routes('http://127.0.0.1:1', ['k'])))
+    const resolved = await adapter.resolveModel('mock_pool', 'mock-model')
+    expect(resolved.reasoning).toMatchObject({
+      efforts: [
+        { id: 'off', name: 'Off' },
+        { id: 'high', name: 'High' },
+        { id: 'max', name: 'Max' },
+      ],
+      defaultEffort: 'high',
+    })
+  })
+
   it('exposes reasoning metadata when the model pins an effort', async () => {
     const cfg = resolveConfig({
       strategy: 'round-robin',
